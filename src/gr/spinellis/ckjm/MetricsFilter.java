@@ -4,13 +4,6 @@ import org.apache.bcel.classfile.*;
 
 import java.io.*;
 import java.util.Map;
-import org.apache.bcel.classfile.*;
-import java.io.*;
-import java.util.Map;
-
-import org.apache.bcel.classfile.*;
-import java.io.*;
-import java.util.*;
 
 public class MetricsFilter {
 	private static boolean includeJdk = false;
@@ -24,78 +17,57 @@ public class MetricsFilter {
 		return !onlyPublic;
 	}
 
-	private static void loadAndParseClass(ClassMetricsContainer cm, String clspec) {
-		int spc;
-		JavaClass jc = null;
-
-		if ((spc = clspec.indexOf(' ')) != -1) {
-			String jar = clspec.substring(0, spc);
-			clspec = clspec.substring(spc + 1);
-			try {
-				jc = new ClassParser(jar, clspec).parse();
-			} catch (IOException e) {
-				System.err.println("Error loading " + clspec + " from " + jar + ": " + e);
-			}
-		} else {
-			try {
-				jc = new ClassParser(clspec).parse();
-			} catch (IOException e) {
-				System.err.println("Error loading " + clspec + ": " + e);
-			}
-		}
-		if (jc != null) {
-			ClassVisitor visitor = new ClassVisitor(jc, cm);
-			visitor.start();
-			visitor.end();
+	private static void parseArguments(String[] args, int argp, String parameter, boolean flag) {
+		if (args.length > argp && args[argp].equals(parameter)) {
+			flag = true;
+			argp++;
 		}
 	}
 
 	public static void runMetrics(String[] files, CkjmOutputHandler outputHandler) {
 		ClassMetricsContainer cm = new ClassMetricsContainer();
 
-		for (String file : files)
-			loadAndParseClass(cm, file);
+		for (String file : files) {
+			JavaClass jc = ClassLoader.loadClass(file);
+			ClassParser.parseClass(jc, cm);
+		}
 
-		// Directly access the classMetricsMap field
 		Map<String, ClassMetrics> metricsMap = cm.getClassMetricsMap();
 
 		MetricsPrinter printer = new MetricsPrinter(new PrintPublicVisitedStrategy());
 		printer.printMetrics(outputHandler, metricsMap);
 	}
 
-	public static void main(String[] argv) {
+	public static void main(String[] args) {
 		int argp = 0;
+		parseArguments(args, argp, "-s", includeJdk);
+		parseArguments(args, argp, "-p", onlyPublic);
 
-		if (argv.length > argp && argv[argp].equals("-s")) {
-			includeJdk = true;
-			argp++;
-		}
-		if (argv.length > argp && argv[argp].equals("-p")) {
-			onlyPublic = true;
-			argp++;
-		}
 		ClassMetricsContainer cm = new ClassMetricsContainer();
 
-		if (argv.length == argp) {
+		if (args.length == 0) {
 			BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 			try {
 				String s;
-				while ((s = in.readLine()) != null)
-					loadAndParseClass(cm, s);
+				while ((s = in.readLine()) != null) {
+					JavaClass jc = ClassLoader.loadClass(s);
+					ClassParser.parseClass(jc, cm);
+				}
 			} catch (Exception e) {
 				System.err.println("Error reading line: " + e);
 				System.exit(1);
 			}
 		}
 
-		for (int i = argp; i < argv.length; i++)
-			loadAndParseClass(cm, argv[i]);
+		for (String arg : args) {
+			JavaClass jc = ClassLoader.loadClass(arg);
+			ClassParser.parseClass(jc, cm);
+		}
 
 		Map<String, ClassMetrics> metricsMap = cm.getClassMetricsMap();
 
 		CkjmOutputHandler handler = new PrintPlainResults(System.out);
 		MetricsPrinter printer = new MetricsPrinter(new PrintPublicVisitedStrategy());
 		printer.printMetrics(handler, metricsMap);
-
 	}
 }

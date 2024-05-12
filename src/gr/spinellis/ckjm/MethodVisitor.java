@@ -6,82 +6,95 @@ import org.apache.bcel.generic.*;
 import org.apache.bcel.Constants;
 import org.apache.bcel.util.*;
 import java.util.*;
+import org.apache.bcel.generic.*;
+import org.apache.bcel.Constants;
 
+class MethodVisitor extends EmptyVisitor implements Visitor {
+    private MethodGen methodGen;
+    private ConstantPoolGen constantPool;
+    private ClassVisitor classVisitor;
+    private ClassMetrics classMetrics;
 
-class MethodVisitor extends EmptyVisitor {
-    private MethodGen mg;
-    private ConstantPoolGen cp;
-    private ClassVisitor cv;
-    private ClassMetrics cm;
-
-    MethodVisitor(MethodGen m, ClassVisitor c) {
-        mg = m;
-        cv = c;
-        cp = mg.getConstantPool();
-        cm = cv.getMetrics();
+    public MethodVisitor(MethodGen method, ClassVisitor classVisitor) {
+        methodGen = method;
+        this.classVisitor = classVisitor;
+        constantPool = methodGen.getConstantPool();
+        classMetrics = classVisitor.getMetrics();
     }
 
     public void start() {
-        if (!mg.isAbstract() && !mg.isNative()) {
-            for (InstructionHandle ih = mg.getInstructionList().getStart();
-                 ih != null; ih = ih.getNext()) {
-                Instruction i = ih.getInstruction();
+        if (!methodGen.isAbstract() && !methodGen.isNative()) {
+            for (InstructionHandle instructionHandle = methodGen.getInstructionList().getStart();
+                 instructionHandle != null; instructionHandle = instructionHandle.getNext()) {
+                Instruction instruction = instructionHandle.getInstruction();
 
-                if (!visitInstruction(i))
-                    i.accept(this);
+                if (!visitInstruction(instruction)) {
+                    instruction.accept(this);
+                }
             }
             updateExceptionHandlers();
         }
     }
 
-    private boolean visitInstruction(Instruction i) {
-        short opcode = i.getOpcode();
+    @Override
+    public void end() {
+    }
+
+    private boolean visitInstruction(Instruction instruction) {
+        short opcode = instruction.getOpcode();
         return ((InstructionConstants.INSTRUCTIONS[opcode] != null) &&
-                !(i instanceof ConstantPushInstruction) &&
-                !(i instanceof ReturnInstruction));
+                !(instruction instanceof ConstantPushInstruction) &&
+                !(instruction instanceof ReturnInstruction));
     }
 
-    public void visitLocalVariableInstruction(LocalVariableInstruction i) {
-        if (i.getOpcode() != Constants.IINC)
-            cv.registerCoupling(i.getType(cp));
+    public void visitLocalVariableInstruction(LocalVariableInstruction instruction) {
+        if (instruction.getOpcode() != Constants.IINC) {
+            classVisitor.registerCoupling(instruction.getType(constantPool));
+        }
     }
 
-    public void visitArrayInstruction(ArrayInstruction i) {
-        cv.registerCoupling(i.getType(cp));
+    public void visitArrayInstruction(ArrayInstruction instruction) {
+        classVisitor.registerCoupling(instruction.getType(constantPool));
     }
 
-    public void visitFieldInstruction(FieldInstruction i) {
-        cv.registerFieldAccess(i.getClassName(cp), i.getFieldName(cp));
-        cv.registerCoupling(i.getFieldType(cp));
+    public void visitFieldInstruction(FieldInstruction instruction) {
+        classVisitor.registerFieldAccess(instruction.getClassName(constantPool), instruction.getFieldName(constantPool));
+        classVisitor.registerCoupling(instruction.getFieldType(constantPool));
     }
 
-    public void visitInvokeInstruction(InvokeInstruction i) {
-        Type[] argTypes = i.getArgumentTypes(cp);
-        for (Type argType : argTypes)
-            cv.registerCoupling(argType);
-        cv.registerCoupling(i.getReturnType(cp));
-        cv.registerMethodInvocation(i.getClassName(cp), i.getMethodName(cp), argTypes);
+    public void visitInvokeInstruction(InvokeInstruction instruction) {
+        Type[] argTypes = instruction.getArgumentTypes(constantPool);
+        for (Type argType : argTypes) {
+            classVisitor.registerCoupling(argType);
+        }
+        classVisitor.registerCoupling(instruction.getReturnType(constantPool));
+        classVisitor.incrementRFC(
+                instruction.getClassName(constantPool),
+                instruction.getMethodName(constantPool),
+                argTypes
+        );
     }
 
-    public void visitINSTANCEOF(INSTANCEOF i) {
-        cv.registerCoupling(i.getType(cp));
+    public void visitINSTANCEOF(INSTANCEOF instruction) {
+        classVisitor.registerCoupling(instruction.getType(constantPool));
     }
 
-    public void visitCHECKCAST(CHECKCAST i) {
-        cv.registerCoupling(i.getType(cp));
+    public void visitCHECKCAST(CHECKCAST instruction) {
+        classVisitor.registerCoupling(instruction.getType(constantPool));
     }
 
-    public void visitReturnInstruction(ReturnInstruction i) {
-        cv.registerCoupling(i.getType(cp));
+    public void visitReturnInstruction(ReturnInstruction instruction) {
+        classVisitor.registerCoupling(instruction.getType(constantPool));
     }
 
     private void updateExceptionHandlers() {
-        CodeExceptionGen[] handlers = mg.getExceptionHandlers();
+        CodeExceptionGen[] exceptionHandlers = methodGen.getExceptionHandlers();
 
-        for (CodeExceptionGen handler : handlers) {
-            Type t = handler.getCatchType();
-            if (t != null)
-                cv.registerCoupling(t);
+        for (CodeExceptionGen exceptionHandler : exceptionHandlers) {
+            Type exceptionType = exceptionHandler.getCatchType();
+            if (exceptionType != null) {
+                classVisitor.registerCoupling(exceptionType);
+            }
         }
     }
 }
