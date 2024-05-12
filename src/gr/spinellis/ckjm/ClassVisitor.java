@@ -129,16 +129,9 @@ public class ClassVisitor extends org.apache.bcel.classfile.EmptyVisitor impleme
 		registerCoupling(getClassName(type));
 	}
 
-	private String getClassName(Type type) {
-		String typeString = type.toString();
-		if (type.getType() <= Constants.T_VOID) {
-			return "java.PRIMITIVE";
-		} else if (type instanceof ArrayType) {
-			ArrayType arrayType = (ArrayType) type;
-			return getClassName(arrayType.getBasicType());
-		} else {
-			return type.toString();
-		}
+	public String getClassName(Type type) {
+		TypeHandler handler = TypeHandlerFactory.createTypeHandler(type);
+		return handler.getClassName();
 	}
 
 	public void incrementRFC(String className, String methodName, Type[] arguments) {
