@@ -4,8 +4,12 @@ import org.apache.bcel.classfile.JavaClass;
 import org.apache.bcel.classfile.ClassParser;
 
 import java.io.IOException;
+import org.apache.bcel.classfile.JavaClass;
+import org.apache.bcel.classfile.ClassParser;
 
-public class ClassLoader {
+import java.io.IOException;
+
+public class ClassFileLoader {
     public static JavaClass loadClass(String clspec) {
         int spc;
         JavaClass jc = null;

@@ -28,7 +28,7 @@ public class MetricsFilter {
 		ClassMetricsContainer cm = new ClassMetricsContainer();
 
 		for (String file : files) {
-			JavaClass jc = ClassLoader.loadClass(file);
+			JavaClass jc = ClassFileLoader.loadClass(file);
 			ClassParser.parseClass(jc, cm);
 		}
 
@@ -50,7 +50,7 @@ public class MetricsFilter {
 			try {
 				String s;
 				while ((s = in.readLine()) != null) {
-					JavaClass jc = ClassLoader.loadClass(s);
+					JavaClass jc = ClassFileLoader.loadClass(s);
 					ClassParser.parseClass(jc, cm);
 				}
 			} catch (Exception e) {
@@ -60,7 +60,7 @@ public class MetricsFilter {
 		}
 
 		for (String arg : args) {
-			JavaClass jc = ClassLoader.loadClass(arg);
+			JavaClass jc = ClassFileLoader.loadClass(arg);
 			ClassParser.parseClass(jc, cm);
 		}
 
